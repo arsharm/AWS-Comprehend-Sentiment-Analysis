@@ -1,0 +1,77 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Transform": "AWS::Serverless-2016-10-31",
+  "Description": "An AWS Serverless Application that uses the ASP.NET Core framework running in Amazon Lambda.",
+  "Parameters": {
+    "ShouldCreateSNSTopic":
+    {
+    "Type" :"String",
+    "AllowedValues" : ["true","false"],
+    "Description": "If true then a SNS topic will be created"
+    }
+  },
+  "Conditions": {
+    "CreatedSNSTopic":{"Fn::Equals":[{"Ref":"ShouldCreateSNSTopic"},true]}
+  },
+  "Resources": {
+    "AspNetCoreFunction": {
+       
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "FunctionName" : "SentimentAnalysisAPI",
+        "Handler": "ComprehendTutorial::ComprehendTutorial.LambdaEntryPoint::FunctionHandlerAsync",
+        "Runtime": "dotnetcore3.1",
+        "CodeUri": "",
+        "MemorySize": 256,
+        "Timeout": 30,
+        "Role": "arn:aws:iam::429636622452:role/ComprehendLambdaTutorial",
+        
+        "Events": {
+          "ProxyResource": {
+            "Type": "Api",
+            "Properties": {
+              "Path": "/{proxy+}",
+              "Method": "ANY"
+            }
+          },
+          "RootResource": {
+            "Type": "Api",
+            "Properties": {
+              "Path": "/",
+              "Method": "ANY"
+            }
+          },
+          "PutResource":
+          {
+          "Type": "Api",
+          "Properties":
+              {
+              "Path": "/api/comments",
+              "Method":"POST"
+              }
+          }
+        }
+      }
+    }
+    ,
+  "SNSTopic":
+  {
+    "Type":"AWS::SNS::Topic",
+    "Description": "SNS Topic to create notifications",
+    "Condition" : "CreatedSNSTopic",
+    "Properties":
+    {
+        "TopicName":"CommentNotifier",
+        "DisplayName": "CommnentNotifierTutorial"
+    }
+  }
+  },
+  "Outputs": {
+    "ApiURL": {
+      "Description": "API endpoint URL for Prod environment",
+      "Value": {
+        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+      }
+    }
+  }
+}
